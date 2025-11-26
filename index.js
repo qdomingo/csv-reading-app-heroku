@@ -12,10 +12,6 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
-app.get('/', (req, res) => {
-  res.send('Backend funcionando');
-});
-
 // Endpoint para subir archivo
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
