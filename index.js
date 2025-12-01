@@ -45,40 +45,61 @@ app.get('/api/read/:filename', (req, res) => {
       .on('end', () => {
         // Mapear columnas relevantes ignorando mayúsculas, espacios y guiones bajos
         const normalize = s => s.toLowerCase().replace(/\s|_/g, '');
-        const colMap = {};
         const firstRow = results[0] || {};
         const keys = Object.keys(firstRow);
-        // Definir los nombres esperados
-        const expected = {
+        // Definir los nombres esperados para ambos tipos de CSV
+        const expectedPantalla2 = {
+          login: ['login'],
+          name: ['name'],
+          role: ['role']
+        };
+        const expectedPantalla1 = {
           login: ['login'],
           lastauthenticatedat: ['lastauthenticatedat', 'last authenticated at'],
           lastactivityat: ['lastactivityat', 'last activity at'],
           lastsurfaceused: ['lastsurfaceused', 'last surface used']
         };
-        // Buscar el mapeo real
-        for (const key of keys) {
-          const norm = normalize(key);
-          for (const exp in expected) {
-            if (expected[exp].some(e => normalize(e) === norm)) {
-              colMap[exp] = key;
+        // Función para mapear columnas
+        function getColMap(expected) {
+          const colMap = {};
+          for (const key of keys) {
+            const norm = normalize(key);
+            for (const exp in expected) {
+              if (expected[exp].some(e => normalize(e) === norm)) {
+                colMap[exp] = key;
+              }
             }
           }
-        }
-        // Si falta alguna columna, intentar buscar por coincidencia parcial
-        for (const exp in expected) {
-          if (!colMap[exp]) {
-            const found = keys.find(k => normalize(k).includes(exp));
-            if (found) colMap[exp] = found;
+          // Si falta alguna columna, intentar buscar por coincidencia parcial
+          for (const exp in expected) {
+            if (!colMap[exp]) {
+              const found = keys.find(k => normalize(k).includes(exp));
+              if (found) colMap[exp] = found;
+            }
           }
+          return colMap;
         }
-        // Construir los datos normalizados
+        // Detectar si es un CSV de Pantalla2 (tiene login y role)
+        const colMap2 = getColMap(expectedPantalla2);
+        const hasPantalla2 = colMap2.login && colMap2.role;
+        if (hasPantalla2) {
+          // Devolver login, name (si existe) y role
+          const normalizedResults = results.map(row => ({
+            login: row[colMap2.login] || '',
+            name: colMap2.name ? (row[colMap2.name] || '') : '',
+            role: row[colMap2.role] || ''
+          }));
+          return res.json({ type: 'csv', data: normalizedResults });
+        }
+        // Si no, intentar Pantalla1 (Copilot)
+        const colMap1 = getColMap(expectedPantalla1);
         const normalizedResults = results.map(row => ({
-          login: row[colMap.login] || '',
-          'last authenticated at': row[colMap.lastauthenticatedat] || '',
-          'last activity at': row[colMap.lastactivityat] || '',
-          'last surface used': row[colMap.lastsurfaceused] || ''
+          login: row[colMap1.login] || '',
+          'last authenticated at': row[colMap1.lastauthenticatedat] || '',
+          'last activity at': row[colMap1.lastactivityat] || '',
+          'last surface used': row[colMap1.lastsurfaceused] || ''
         }));
-        res.json({ type: 'csv', data: normalizedResults });
+        return res.json({ type: 'csv', data: normalizedResults });
       })
       .on('error', (err) => {
         res.status(500).json({ error: 'Error leyendo el archivo CSV' });
