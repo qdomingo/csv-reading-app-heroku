@@ -34,9 +34,60 @@ app.get('/api/read/:filename', (req, res) => {
   const ext = path.extname(originalname || filename).toLowerCase();
   if (ext === '.xlsx' || ext === '.xls') {
     const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
-    return res.json({ type: 'excel', data });
+    // Buscar la hoja 'O-Licencias', si no existe usar la primera
+    let sheetName = workbook.SheetNames[0];
+    for (const name of workbook.SheetNames) {
+      if (name.trim().toLowerCase() === 'o-licencias') {
+        sheetName = name;
+        break;
+      }
+    }
+    const sheet = workbook.Sheets[sheetName];
+    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const normalize = s => (typeof s === 'string' ? s.toLowerCase().replace(/\s|_/g, '') : '');
+    // Definir los nombres esperados y sus variantes
+    const expected = {
+      mail: ['mail'],
+      nombre: ['nombrecompleto', 'nombre completo'],
+      empresa: ['empresa'],
+      licencia: ['licencia'],
+      estado: ['estado']
+    };
+    // Buscar la fila de cabecera y los índices de cada campo
+    let headerRow = null;
+    let headerIndex = 0;
+    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1 };
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      const row = rows[i];
+      let found = 0;
+      row.forEach((cell, idx) => {
+        for (const key in expected) {
+          if (expected[key].some(e => normalize(cell) === normalize(e))) {
+            colIdx[key] = idx;
+            found++;
+          }
+        }
+      });
+      if (found > 0) {
+        headerRow = row;
+        headerIndex = i;
+        break;
+      }
+    }
+    if (colIdx.mail === -1) {
+      console.warn('Excel import: No se encontró la columna Mail. Primeras filas:', rows.slice(0, 10));
+      return res.status(400).json({ error: 'No se encontró la columna Mail en el Excel.' });
+    }
+    // Leer el resto de filas como datos
+    const dataRows = rows.slice(headerIndex + 1);
+    const normalizedResults = dataRows.map(row => ({
+      mail: colIdx.mail !== -1 ? (row[colIdx.mail] || '') : '',
+      nombre: colIdx.nombre !== -1 ? (row[colIdx.nombre] || '') : '',
+      empresa: colIdx.empresa !== -1 ? (row[colIdx.empresa] || '') : '',
+      licencia: colIdx.licencia !== -1 ? (row[colIdx.licencia] || '') : '',
+      estado: colIdx.estado !== -1 ? (row[colIdx.estado] || '') : ''
+    }));
+    return res.json({ type: 'excel', data: normalizedResults });
   } else if (ext === '.csv') {
     const results = [];
     fs.createReadStream(filePath)
