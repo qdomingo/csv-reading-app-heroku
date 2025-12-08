@@ -34,13 +34,17 @@ app.get('/api/read/:filename', (req, res) => {
   const ext = path.extname(originalname || filename).toLowerCase();
   if (ext === '.xlsx' || ext === '.xls') {
     const workbook = xlsx.readFile(filePath);
-    // Buscar la hoja 'O-Licencias', si no existe usar la primera
+    // Buscar la hoja 'O-Licencias', si no existe usar la segunda hoja (índice 1)
     let sheetName = workbook.SheetNames[0];
     for (const name of workbook.SheetNames) {
       if (name.trim().toLowerCase() === 'o-licencias') {
         sheetName = name;
         break;
       }
+    }
+    // Si no se encontró 'O-Licencias' y hay al menos 2 hojas, usar la segunda
+    if (sheetName === workbook.SheetNames[0] && workbook.SheetNames.length > 1) {
+      sheetName = workbook.SheetNames[1];
     }
     const sheet = workbook.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '' });
@@ -51,12 +55,14 @@ app.get('/api/read/:filename', (req, res) => {
       nombre: ['nombrecompleto', 'nombre completo'],
       empresa: ['empresa'],
       licencia: ['licencia'],
-      estado: ['estado']
+      estado: ['estado'],
+      fechaAlta: ['fechaalta', 'fecha alta', 'fechadealta', 'fecha de alta'],
+      proyecto: ['proyecto', 'proyectos']
     };
     // Buscar la fila de cabecera y los índices de cada campo
     let headerRow = null;
     let headerIndex = 0;
-    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1 };
+    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, proyecto: -1 };
     for (let i = 0; i < Math.min(10, rows.length); i++) {
       const row = rows[i];
       let found = 0;
@@ -85,7 +91,9 @@ app.get('/api/read/:filename', (req, res) => {
       nombre: colIdx.nombre !== -1 ? (row[colIdx.nombre] || '') : '',
       empresa: colIdx.empresa !== -1 ? (row[colIdx.empresa] || '') : '',
       licencia: colIdx.licencia !== -1 ? (row[colIdx.licencia] || '') : '',
-      estado: colIdx.estado !== -1 ? (row[colIdx.estado] || '') : ''
+      estado: colIdx.estado !== -1 ? (row[colIdx.estado] || '') : '',
+      fechaAlta: colIdx.fechaAlta !== -1 ? (row[colIdx.fechaAlta] || '') : '',
+      proyecto: colIdx.proyecto !== -1 ? (row[colIdx.proyecto] || '') : ''
     }));
     return res.json({ type: 'excel', data: normalizedResults });
   } else if (ext === '.csv') {
