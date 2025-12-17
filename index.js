@@ -57,12 +57,13 @@ app.get('/api/read/:filename', (req, res) => {
       licencia: ['licencia'],
       estado: ['estado'],
       fechaAlta: ['fechaalta', 'fecha alta', 'fechadealta', 'fecha de alta'],
+      fechaBaja: ['fechabaja', 'fecha baja', 'fechadebaja', 'fecha de baja'],
       proyecto: ['proyecto', 'proyectos']
     };
     // Buscar la fila de cabecera y los índices de cada campo
     let headerRow = null;
     let headerIndex = 0;
-    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, proyecto: -1 };
+    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, fechaBaja: -1, proyecto: -1 };
     for (let i = 0; i < Math.min(10, rows.length); i++) {
       const row = rows[i];
       let found = 0;
@@ -93,6 +94,7 @@ app.get('/api/read/:filename', (req, res) => {
       licencia: colIdx.licencia !== -1 ? (row[colIdx.licencia] || '') : '',
       estado: colIdx.estado !== -1 ? (row[colIdx.estado] || '') : '',
       fechaAlta: colIdx.fechaAlta !== -1 ? (row[colIdx.fechaAlta] || '') : '',
+      fechaBaja: colIdx.fechaBaja !== -1 ? (row[colIdx.fechaBaja] || '') : '',
       proyecto: colIdx.proyecto !== -1 ? (row[colIdx.proyecto] || '') : ''
     }));
     return res.json({ type: 'excel', data: normalizedResults });
