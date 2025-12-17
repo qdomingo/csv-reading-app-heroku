@@ -51,19 +51,20 @@ app.get('/api/read/:filename', (req, res) => {
     const normalize = s => (typeof s === 'string' ? s.toLowerCase().replace(/\s|_/g, '') : '');
     // Definir los nombres esperados y sus variantes
     const expected = {
+      id: ['id', 'código', 'codigo', 'códigoempleado', 'codigoempleado'],
       mail: ['mail'],
-      nombre: ['nombrecompleto', 'nombre completo'],
+      nombre: ['nombrecompleto', 'nombrecompleto'],
       empresa: ['empresa'],
       licencia: ['licencia'],
       estado: ['estado'],
-      fechaAlta: ['fechaalta', 'fecha alta', 'fechadealta', 'fecha de alta'],
-      fechaBaja: ['fechabaja', 'fecha baja', 'fechadebaja', 'fecha de baja'],
+      fechaAlta: ['fechaalta', 'fechaalta', 'fechadealta', 'fechadealta'],
+      fechaBaja: ['fechabaja', 'fechabaja', 'fechadebaja', 'fechadebaja'],
       proyecto: ['proyecto', 'proyectos']
     };
     // Buscar la fila de cabecera y los índices de cada campo
     let headerRow = null;
     let headerIndex = 0;
-    let colIdx = { mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, fechaBaja: -1, proyecto: -1 };
+    let colIdx = { id: -1, mail: -1, nombre: -1, empresa: -1, licencia: -1, estado: -1, fechaAlta: -1, fechaBaja: -1, proyecto: -1 };
     for (let i = 0; i < Math.min(10, rows.length); i++) {
       const row = rows[i];
       let found = 0;
@@ -88,6 +89,7 @@ app.get('/api/read/:filename', (req, res) => {
     // Leer el resto de filas como datos
     const dataRows = rows.slice(headerIndex + 1);
     const normalizedResults = dataRows.map(row => ({
+      id: colIdx.id !== -1 ? (row[colIdx.id] || '') : '',
       mail: colIdx.mail !== -1 ? (row[colIdx.mail] || '') : '',
       nombre: colIdx.nombre !== -1 ? (row[colIdx.nombre] || '') : '',
       empresa: colIdx.empresa !== -1 ? (row[colIdx.empresa] || '') : '',
